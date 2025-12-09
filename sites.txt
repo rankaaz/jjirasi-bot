@@ -1,2 +1,2 @@
-https://hongsthetic.com/board/product/list.html?board_no=5&page=1|5|test01|a1230a1230|https://hongsthetic.com/login.html
-https://reanswer.co.kr/board/product/list.html?board_no=6&page=1|6|test01|a1230a1230|https://reanswer.co.kr/login.html
+https://hongsthetic.com/board/product/list.html?board_no=5&page=1|5|1|test01|a1230a1230|https://hongsthetic.com/member/login.html
+https://reanswer.co.kr/board/product/list.html?board_no=6&page=1|6|1|test01|a1230a1230|https://reanswer.co.kr/member/login.html
