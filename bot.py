@@ -14,9 +14,10 @@ options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--window-size=1920,1080")
 
 # 파일 초기화
-open("realtime_links.txt", "w").close()
+with open("realtime_links.txt", "w", encoding="utf-8") as f:
+    f.write("")
 
-# sites.txt 읽기 (6개 컬럼 정확히)
+# sites.txt 읽기
 sites = []
 with open("sites.txt", "r", encoding="utf-8") as f:
     for line in f:
@@ -24,7 +25,12 @@ with open("sites.txt", "r", encoding="utf-8") as f:
         if line and not line.startswith("#"):
             parts = line.split("|")
             if len(parts) >= 6:
-                sites.append(parts)
+                sites.append({
+                    "list_url": parts[0],
+                    "id": parts[3],
+                    "pw": parts[4],
+                    "login_url": parts[5]
+                })
 
 # 키워드
 keywords = {"a": [], "b": [], "c": []}
@@ -41,31 +47,26 @@ with open("contents.txt", "r", encoding="utf-8") as f:
 total = 0
 
 for site in sites:
-    list_url = site[0]           # 게시판 리스트 URL
-    login_id = site[3]           # 아이디
-    login_pw = site[4]           # 비번
-    login_url = site[5]          # 로그인 페이지 URL
-
     driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 20)
 
     try:
-        # 1. 로그인
-        driver.get(login_url)
-        time.sleep(5)
-        wait.until(EC.presence_of_element_located((By.NAME, "user_id"))).send_keys(login_id)
-        driver.find_element(By.NAME, "user_pw").send_keys(login_pw)
+        # 로그인
+        driver.get(site["login_url"])
+        time.sleep(6)
+        wait.until(EC.presence_of_element_located((By.NAME, "user_id"))).send_keys(site["id"])
+        driver.find_element(By.NAME, "user_pw").send_keys(site["pw"])
         driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
         time.sleep(10)
 
-        # 2. 100번 반복
+        # 100개 반복
         for _ in range(100):
-            driver.get(list_url)
+            driver.get(site["list_url"])
             time.sleep(5)
 
             # 글쓰기 클릭
             wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "글쓰기"))).click()
-            time.sleep(5)
+            time.sleep(6)
 
             # 제목
             title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
@@ -78,16 +79,15 @@ for site in sites:
             driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']").click()
             time.sleep(10)
 
-            # 성공 저장
             link = driver.current_url
             total += 1
             with open("realtime_links.txt", "a", encoding="utf-8") as f:
-                f.write(f"{total}. {datetime.now().strftime('%H:%M:%S')} | {title} | {link}\n")
+                f.write(f"{total}. {datetime.now():%H:%M:%S} | {title} | {link}\n")
             print(f"성공 {total}개: {link}")
 
     except Exception as e:
-        print("에러 발생:", str(e))
+        print("에러:", str(e))
     finally:
         driver.quit()
 
-print(f"\n최종 완료! 총 {total}개 포스팅 성공")
+print(f"\n완료! 총 {total}개 포스팅")
