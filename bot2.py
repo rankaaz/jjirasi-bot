@@ -1,16 +1,20 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import time, random
 from datetime import datetime
 
+# 봇 탐지 완전 우회 옵션 (이게 핵심!)
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--disable-blink-features=AutomationControlled")
+options.add_experimental_option("excludeSwitches", ["enable-automation"])
+options.add_experimental_option('useAutomationExtension', False)
+options.add_argument("--disable-infobars")
 options.add_argument("--window-size=1920,1080")
+options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
 
 open("realtime_links.txt", "w").close()
 
@@ -37,67 +41,44 @@ total = 0
 
 for s in sites:
     driver = webdriver.Chrome(options=options)
-    wait = WebDriverWait(driver, 20)
-
     try:
         driver.get(s["login"])
         time.sleep(8)
 
-        # 1. 모든 가능한 ID 입력칸 시도
-        id_found = False
-        for selector in ['[name="user_id"]', '[name="mb_id"]', '[id="user_id"]', '[id="mb_id"]', 'input[type="text"]', 'input[type="email"]']:
-            try:
-                elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-                elem.clear()
-                elem.send_keys(s["id"])
-                id_found = True
-                print(f"ID 입력 성공: {selector}")
-                break
-            except:
-                continue
+        # 사이트별 정확한 입력칸
+        if "hongsthetic" in s["login"]:
+            driver.find_element(By.NAME, "member_id").send_keys(s["id"])
+            driver.find_element(By.NAME, "member_passwd").send_keys(s["pw"])
+        else:
+            driver.find_element(By.NAME, "user_id").send_keys(s["id"])
+            driver.find_element(By.NAME, "user_pw").send_keys(s["pw"])
 
-        # 2. 모든 가능한 PW 입력칸 시도
-        pw_found = False
-        for selector in ['[name="user_pw"]', '[name="mb_password"]', '[id="user_pw"]', '[id="mb_password"]', 'input[type="password"]']:
-            try:
-                elem = driver.find_element(By.CSS_SELECTOR, selector)
-                elem.clear()
-                elem.send_keys(s["pw"])
-                pw_found = True
-                print(f"PW 입력 성공: {selector}")
-                break
-            except:
-                continue
-
-        # 3. 로그인 버튼 클릭
-        for selector in ["button[type='submit']", "input[type='submit']", ".btn_login", "button:contains('로그인')"]:
-            try:
-                driver.find_element(By.CSS_SELECTOR, selector).click()
-                print("로그인 버튼 클릭 성공")
-                break
-            except:
-                continue
-
+        driver.find_element(By.CSS_SELECTOR, "a.btnSubmit, button[type='submit'], input[type='submit']").click()
         time.sleep(12)
 
-        # 여기서부터는 기존 그대로
+        # 로그인 후 세션 살리기 (필수!)
+        driver.get("https://hongsthetic.com" if "hongsthetic" in s["login"] else "https://reanswer.co.kr")
+        time.sleep(5)
+
+        # 100개 포스팅
         for _ in range(100):
             driver.get(s["url"])
-            time.sleep(5)
+            time.sleep(6)
             driver.find_element(By.LINK_TEXT, "글쓰기").click()
-            time.sleep(5)
+            time.sleep(6)
             title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
             driver.find_element(By.NAME, "subject").send_keys(title)
             driver.find_element(By.NAME, "content").send_keys(content)
             driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']").click()
-            time.sleep(10)
+            time.sleep(12)
+
             total += 1
             with open("realtime_links.txt", "a", encoding="utf-8") as f:
                 f.write(f"{total}. {datetime.now():%H:%M:%S} | {title} | {driver.current_url}\n")
             print(f"성공 {total}개")
 
     except Exception as e:
-        print("최종 에러:", e)
+        print("에러:", e)
     finally:
         driver.quit()
 
