@@ -13,9 +13,8 @@ options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--window-size=1920,1080")
 
-# 파일 초기화
-with open("realtime_links.txt", "w", encoding="utf-8") as f:
-    f.write("")
+# 초기화
+open("realtime_links.txt", "w", encoding="utf-8").close()
 
 # sites.txt 읽기
 sites = []
@@ -59,23 +58,16 @@ for site in sites:
         driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
         time.sleep(10)
 
-        # 100개 반복
+        # 100개 포스팅
         for _ in range(100):
             driver.get(site["list_url"])
             time.sleep(5)
-
-            # 글쓰기 클릭
             wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "글쓰기"))).click()
             time.sleep(6)
 
-            # 제목
             title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
             wait.until(EC.presence_of_element_located((By.NAME, "subject"))).send_keys(title)
-
-            # 내용
             driver.find_element(By.NAME, "content").send_keys(content)
-
-            # 등록
             driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']").click()
             time.sleep(10)
 
@@ -86,8 +78,8 @@ for site in sites:
             print(f"성공 {total}개: {link}")
 
     except Exception as e:
-        print("에러:", str(e))
+        print("에러 발생:", str(e))
     finally:
         driver.quit()
 
-print(f"\n완료! 총 {total}개 포스팅")
+print(f"\n최종 완료! 총 {total}개 포스팅")
