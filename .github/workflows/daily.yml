@@ -1,3 +1,4 @@
+# daily.yml 전체 교체 (이거만 복사해서 덮어써)
 name: Daily Post + Real-time Links
 on:
   schedule:
@@ -12,15 +13,12 @@ jobs:
         with: { python-version: '3.12' }
       - run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
       - run: pip install selenium
-      - run: python bot.py
-      - name: Force push realtime_links.txt
+      - run: python bot2.py   # 여기만 bot2.py로 바꿈
+      - name: Commit links
         run: |
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           git add realtime_links.txt
           git commit -m "Update links" || echo "No changes"
-          git fetch origin
-          git reset --hard origin/main
-          git add realtime_links.txt
-          git commit -m "Force update links" || echo "No changes"
+          git pull --rebase origin main
           git push origin main --force
