@@ -13,7 +13,10 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
       - run: pip install selenium
       - run: python bot.py
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: realtime_links.txt
-          tag_name: latest
+      - name: Commit realtime_links.txt
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add realtime_links.txt
+          git diff --staged --quiet || git commit -m "Update links"
+          git push
