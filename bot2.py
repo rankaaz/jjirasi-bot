@@ -14,8 +14,8 @@ options.add_argument("--disable-dev-shm-usage")
 
 open("realtime_links.txt", "w", encoding="utf-8").close()
 
+# 사이트 로드
 sites = []
-with open("sites = []
 with open("sites.txt", "r", encoding="utf-8") as f:
     for line in f:
         line = line.strip()
@@ -23,6 +23,7 @@ with open("sites.txt", "r", encoding="utf-8") as f:
             p = line.split("|")
             sites.append({"write_url": p[0], "id": p[1], "pw": p[2], "login": p[3]})
 
+# 키워드 로드
 keywords = {"a": [], "b": [], "c": []}
 with open("keywords.txt", "r", encoding="utf-8") as f:
     for line in f:
@@ -30,6 +31,7 @@ with open("keywords.txt", "r", encoding="utf-8") as f:
             k, v = line.strip().split("|", 1)
             keywords[k] = [w.strip() for w in v.split(",")]
 
+# 내용 로드
 content = open("contents.txt", "r", encoding="utf-8").read().strip()
 
 total = 0
@@ -39,15 +41,15 @@ for site in sites:
     wait = WebDriverWait(driver, 30)
     
     try:
-        # 1. 진짜 로그인 (JS 강제 클릭)
+        # 로그인 (JS 강제 클릭)
         driver.get(site["login"])
         time.sleep(10)
         driver.find_element(By.NAME, "member_id").send_keys(site["id"])
         driver.find_element(By.NAME, "member_passwd").send_keys(site["pw"])
         driver.execute_script("document.querySelector('a.btnSubmit').click();")
-        time.sleep(20)  # 로그인 완료까지 충분히 기다림
+        time.sleep(20)
 
-        # 2. 100개 반복
+        # 100개 반복
         for _ in range(100):
             try:
                 driver.get(site["write_url"])
