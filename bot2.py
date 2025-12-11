@@ -3,12 +3,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time
-import random
+from selenium.common.exceptions import UnexpectedAlertPresentException, NoAlertPresentException
+import time, random, traceback
 from datetime import datetime
-import traceback  # 에러 자세히 보기용
 
-# 봇 탐지 완전 우회 (2025년 최신)
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
@@ -17,32 +15,26 @@ options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_experimental_option("excludeSwitches", ["enable-automation"])
 options.add_experimental_option('useAutomationExtension', False)
 options.add_argument("--window-size=1920,1080")
-options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
-# 실시간 파일 초기화
 open("realtime_links.txt", "w", encoding="utf-8").close()
 
-# 사이트 로드
 sites = []
 with open("sites.txt", "r", encoding="utf-8") as f:
     for line in f:
         line = line.strip()
         if line and not line.startswith("#"):
-            parts = line.split("|")
-            sites.append({"url": parts[0], "id": parts[1], "pw": parts[2], "login": parts[3]})
+            p = line.split("|")
+            sites.append({"url": p[0], "id": p[1], "pw": p[2], "login": p[3]})
 
-# 키워드 로드
 keywords = {"a": [], "b": [], "c": []}
 with open("keywords.txt", "r", encoding="utf-8") as f:
     for line in f:
-        line = line.strip()
-        if line and "|" in line:
-            k, words = line.split("|", 1)
-            keywords[k] = [w.strip() for w in words.split(",")]
+        if "|" in line:
+            k, v = line.strip().split("|", 1)
+            keywords[k] = [w.strip() for w in v.split(",")]
 
-# 내용 로드
-with open("contents.txt", "r", encoding="utf-8") as f:
-    content = f.read().strip()
+content = open("contents.txt", "r", encoding="utf-8").read().strip()
 
 total = 0
 
@@ -51,70 +43,79 @@ for site in sites:
     wait = WebDriverWait(driver, 20)
     
     try:
-        print(f"\n사이트 접속: {site['url']}")
         driver.get(site["login"])
         time.sleep(8)
-
-        # 로그인 (두 사이트 모두 대응)
         try:
             driver.find_element(By.NAME, "member_id").send_keys(site["id"])
             driver.find_element(By.NAME, "member_passwd").send_keys(site["pw"])
         except:
-            try:
-                driver.find_element(By.NAME, "user_id").send_keys(site["id"])
-                driver.find_element(By.NAME, "user_pw").send_keys(site["pw"])
-            except:
-                print("로그인 필드 못 찾음 – 직접 확인 필요")
-        
-        driver.find_element(By.CSS_SELECTOR, "button[type='submit'], input[type='submit'], a.btnSubmit").click()
+            driver.find_element(By.NAME, "user_id").send_keys(site["id"])
+            driver.find_element(By.NAME, "user_pw").send_keys(site["pw"])
+        driver.find_element(By.CSS_SELECTOR, "button[type='submit'], input[type='submit']").click()
         time.sleep(10)
 
-        # 로그인 성공 확인
-        if "login" in driver.current_url.lower():
-            print("로그인 실패!")
-            continue
-
-        print("로그인 성공!")
-
-        # 100개 포스팅
         for i in range(100):
             try:
+                # 1. 글쓰기 전에 alert 있으면 무조건 "아니오" 클릭
+                try:
+                    alert = driver.switch_to.alert
+                    print("alert 감지 → '아니오' 클릭")
+                    alert.dismiss()  # "아니오" 클릭
+                    time.sleep(2)
+                except NoAlertPresentException:
+                    pass
+
                 driver.get(site["url"])
                 time.sleep(6)
-                
                 driver.find_element(By.LINK_TEXT, "글쓰기").click()
-                time.sleep(6)
+                time.sleep(8)
 
+                # 2. 제목 입력
+                driver.find_element(By.NAME, "subject").clear()
                 a = random.choice(keywords["a"])
                 b = random.choice(keywords["b"])
                 c = random.choice(keywords["c"])
                 title = f"{a} {b} {c}"
-
                 driver.find_element(By.NAME, "subject").send_keys(title)
-                driver.find_element(By.NAME, "content").send_keys(content)
 
+                # 3. 내용 입력 (iframe 있으면 무조건 들어감)
+                try:
+                    iframe = driver.find_element(By.CSS_SELECTOR, "iframe")
+                    driver.switch_to.frame(iframe)
+                    driver.find_element(By.TAG_NAME, "body").clear()
+                    driver.find_element(By.TAG_NAME, "body").send_keys(content)
+                    driver.switch_to.default_content()
+                except:
+                    # iframe 없으면 일반 textarea
+                    driver.find_element(By.NAME, "content").clear()
+                    driver.find_element(By.NAME, "content").send_keys(content)
+
+                # 4. 등록
                 driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']").click()
                 time.sleep(12)
 
                 url = driver.current_url
                 total += 1
-                
                 with open("realtime_links.txt", "a", encoding="utf-8") as f:
-                    f.write(f"{total}. {datetime.now().strftime('%H:%M:%S')} | {title} | {url}\n")
-                
-                print(f"성공 {total}개: {title} → {url}")
+                    f.write(f"{total}. {datetime.now():%H:%M:%S} | {title} | {url}\n")
+                print(f"성공 {total}개: {title}")
 
+            except UnexpectedAlertPresentException:
+                print("alert 무시하고 계속")
+                try: driver.switch_to.alert.dismiss()
+                except: pass
+                time.sleep(3)
+                continue
             except Exception as e:
-                print(f"포스팅 실패 (시도 {i+1}): {e}")
-                print(traceback.format_exc())
+                print(f"포스팅 실패 {i+1}회: {e}")
+                traceback.print_exc()
                 time.sleep(10)
                 continue
 
     except Exception as e:
-        print(f"사이트 전체 실패: {e}")
-        print(traceback.format_exc())
+        print(f"전체 실패: {e}")
+        traceback.print_exc()
     finally:
         driver.quit()
 
-print(f"\n완료! 총 {total}개 포스팅 성공!")
-print("realtime_links.txt 파일에 모든 링크 저장됨")
+print(f"\n최종 완료! 총 {total}개 성공")
