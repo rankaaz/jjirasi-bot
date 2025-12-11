@@ -12,7 +12,6 @@ options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 
-# 실시간 파일 초기화
 open("realtime_links.txt", "w", encoding="utf-8").close()
 
 sites = []
@@ -61,12 +60,13 @@ for site in sites:
                 except:
                     pass
 
-                # 제목
+                # 제목 입력 (이 부분이 핵심!)
                 title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
-                driver.find_element(By.NAME, "subject").clear()
-                driver.find_element(By.NAME, "subject").send_keys(title)
+                subject = driver.find_element(By.NAME, "subject")
+                driver.execute_script("arguments[0].scrollIntoView(true);", subject)
+                subject.send_keys(title)
 
-                # 내용 (iframe 먼저)
+                # 내용 입력
                 try:
                     iframe = driver.find_element(By.TAG_NAME, "iframe")
                     driver.switch_to.frame(iframe)
@@ -77,7 +77,7 @@ for site in sites:
                     driver.find_element(By.NAME, "content").clear()
                     driver.find_element(By.NAME, "content").send_keys(content)
 
-                # 등록 버튼 (input, button, a 태그 모두 대응)
+                # 등록 버튼 (모든 경우 대응)
                 driver.find_element(By.XPATH, "//input[@type='submit'] | //button[contains(text(),'등록')] | //a[contains(text(),'등록')]").click()
                 time.sleep(15)
 
