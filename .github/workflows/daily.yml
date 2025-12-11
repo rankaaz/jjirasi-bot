@@ -1,39 +1,20 @@
-name: Daily Post - 진짜 완벽
-
-on:
-  schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+name: Daily Post
+on: [workflow_dispatch]
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-
-      # Chrome + ChromeDriver 자동 설치 (100% 성공)
+        with: { python-version: '3.12' }
       - uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-
-      - name: Install Selenium
-        run: pip install selenium
-
-      - name: Run Bot
-        run: python bot2.py
-
-      # 기존 latest 태그 강제 업데이트 (태그 충돌 완전 해결)
-      - name: Upload Links (latest 강제 업데이트)
-        uses: ncipollo/release-action@v1
+        with: { chrome-version: stable }
+      - run: pip install selenium
+      - run: python bot2.py
+      - uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           artifacts: realtime_links.txt
           tag: latest
-          name: 오늘 작성된 글 링크
-          body: 자동 생성된 링크 파일
           token: ${{ secrets.GITHUB_TOKEN }}
-          removeArtifacts: false
