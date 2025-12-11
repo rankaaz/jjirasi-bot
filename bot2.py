@@ -14,8 +14,9 @@ options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 
-# 실시간 링크 파일 초기화
-open("realtime_links.txt", "w", encoding="utf-8").close()
+# 실시간 링크 파일 초기화 (빈 파일 대신 기본 텍스트 입력)
+with open("realtime_links.txt", "w", encoding="utf-8") as f:
+    f.write("=== 글 작성 시작 ===\n")
 
 # 사이트 로드
 sites = []
@@ -49,16 +50,13 @@ for site in sites:
     wait = WebDriverWait(driver, 20)
 
     try:
-        # -------------------------
         # 1) 로그인
-        # -------------------------
         driver.get(site["login"])
         time.sleep(7)
 
         driver.find_element(By.NAME, "member_id").send_keys(site["id"])
         driver.find_element(By.NAME, "member_passwd").send_keys(site["pw"])
 
-        # 로그인 버튼 통일 탐색
         try:
             login_btn = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
         except:
@@ -67,17 +65,13 @@ for site in sites:
         login_btn.click()
         time.sleep(10)
 
-        # -------------------------
         # 2) 100개 반복 작성
-        # -------------------------
         for _ in range(100):
 
             try:
-                # 글쓰기 페이지 이동
                 driver.get(site["write_url"])
                 time.sleep(8)
 
-                # 경고 창 자동 처리
                 try:
                     wait.until(EC.alert_is_present())
                     alert = driver.switch_to.alert
@@ -87,9 +81,6 @@ for site in sites:
                 except:
                     pass
 
-                # -------------------------
-                # 제목 작성
-                # -------------------------
                 title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
 
                 subject = wait.until(
@@ -98,12 +89,7 @@ for site in sites:
                 subject.clear()
                 subject.send_keys(title)
 
-                # -------------------------
-                # 본문 작성
-                # -------------------------
                 body_written = False
-
-                # iframe 있는지 먼저 체크
                 iframes = driver.find_elements(By.TAG_NAME, "iframe")
 
                 if iframes:
@@ -117,7 +103,6 @@ for site in sites:
                     except:
                         driver.switch_to.default_content()
 
-                # iframe 없음 → textarea 직접 입력
                 if not body_written:
                     try:
                         textarea = driver.find_element(By.NAME, "content")
@@ -128,9 +113,6 @@ for site in sites:
                         print("본문 입력 실패 → 넘어감")
                         continue
 
-                # -------------------------
-                # 등록 버튼 클릭
-                # -------------------------
                 try:
                     submit_btn = driver.find_element(By.CSS_SELECTOR, "input[type='submit']")
                 except NoSuchElementException:
@@ -139,9 +121,6 @@ for site in sites:
                 submit_btn.click()
                 time.sleep(8)
 
-                # -------------------------
-                # 게시글 URL 기록
-                # -------------------------
                 url = driver.current_url
                 total += 1
 
