@@ -1,35 +1,32 @@
 name: Daily Post - 진짜 작동
+
 on:
   schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+    - cron: '0 0 * * *'    # 매일 한국시간 오전 9시
+  workflow_dispatch:       # 수동 실행 가능
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-          
-      - name: Install Chrome + ChromeDriver (2025 최신 해결법)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo apt install -y ./google-chrome-stable_current_amd64.deb
-          sudo apt-get install -y chromium-chromedriver
-          sudo cp /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
-          sudo chmod +x /usr/bin/chromedriver
-          
+
+      # 이 한 줄이 핵심! → Chrome + ChromeDriver 자동 최신 설치
+      - uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - name: Install Selenium
         run: pip install selenium
-      
+
       - name: Run Bot
         run: python bot2.py
-        
+
+      # 링크 파일 업로드
       - name: Upload Links
         uses: ncipollo/release-action@v1
         with:
