@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
 import random
 from datetime import datetime
@@ -17,7 +17,7 @@ options.add_argument("--disable-dev-shm-usage")
 # 실시간 링크 파일 초기화
 open("realtime_links.txt", "w", encoding="utf-8").close()
 
-# sites.txt 로드 (write.html 그대로 사용)
+# 사이트 로드
 sites = []
 with open("sites.txt", "r", encoding="utf-8") as f:
     for line in f:
@@ -47,67 +47,118 @@ total = 0
 for site in sites:
     driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 20)
-    
+
     try:
-        # 1. 로그인 (두 사이트 모두 member_id / member_passwd)
+        # -------------------------
+        # 1) 로그인
+        # -------------------------
         driver.get(site["login"])
-        time.sleep(10)
+        time.sleep(7)
+
         driver.find_element(By.NAME, "member_id").send_keys(site["id"])
         driver.find_element(By.NAME, "member_passwd").send_keys(site["pw"])
-        driver.find_element(By.CSS_SELECTOR, "button[type='submit'], input[type='submit']").click()
-        time.sleep(15)
 
-        # 2. 100개 반복
+        # 로그인 버튼 통일 탐색
+        try:
+            login_btn = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
+        except:
+            login_btn = driver.find_element(By.CSS_SELECTOR, "input[type='submit']")
+
+        login_btn.click()
+        time.sleep(10)
+
+        # -------------------------
+        # 2) 100개 반복 작성
+        # -------------------------
         for _ in range(100):
-            try:
-                # 바로 write.html 접속
-                driver.get(site["write_url"])
-                time.sleep(10)
 
-                # alert 뜨면 무조건 취소 (기록 있으면 뜸)
+            try:
+                # 글쓰기 페이지 이동
+                driver.get(site["write_url"])
+                time.sleep(8)
+
+                # 경고 창 자동 처리
                 try:
                     wait.until(EC.alert_is_present())
-                    driver.switch_to.alert.dismiss()
-                    print("기록 alert → 취소 클릭")
-                    time.sleep(5)
-                except TimeoutException:
-                    pass  # alert 없으면 바로 진행
+                    alert = driver.switch_to.alert
+                    alert.dismiss()
+                    print("경고창 감지 → 취소")
+                    time.sleep(3)
+                except:
+                    pass
 
-                # 제목 입력
+                # -------------------------
+                # 제목 작성
+                # -------------------------
                 title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
-                subject = driver.find_element(By.NAME, "subject")
+
+                subject = wait.until(
+                    EC.presence_of_element_located((By.NAME, "subject"))
+                )
                 subject.clear()
                 subject.send_keys(title)
 
-                # 내용 입력 (iframe 자동 처리)
-                try:
-                    iframe = driver.find_element(By.TAG_NAME, "iframe")
-                    driver.switch_to.frame(iframe)
-                    driver.find_element(By.TAG_NAME, "body").clear()
-                    driver.find_element(By.TAG_NAME, "body").send_keys(content)
-                    driver.switch_to.default_content()
-                except:
-                    driver.find_element(By.NAME, "content").clear()
-                    driver.find_element(By.NAME, "content").send_keys(content)
+                # -------------------------
+                # 본문 작성
+                # -------------------------
+                body_written = False
 
+                # iframe 있는지 먼저 체크
+                iframes = driver.find_elements(By.TAG_NAME, "iframe")
+
+                if iframes:
+                    try:
+                        driver.switch_to.frame(iframes[0])
+                        body = driver.find_element(By.TAG_NAME, "body")
+                        body.clear()
+                        body.send_keys(content)
+                        body_written = True
+                        driver.switch_to.default_content()
+                    except:
+                        driver.switch_to.default_content()
+
+                # iframe 없음 → textarea 직접 입력
+                if not body_written:
+                    try:
+                        textarea = driver.find_element(By.NAME, "content")
+                        textarea.clear()
+                        textarea.send_keys(content)
+                        body_written = True
+                    except:
+                        print("본문 입력 실패 → 넘어감")
+                        continue
+
+                # -------------------------
                 # 등록 버튼 클릭
-                driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']").click()
-                time.sleep(15)
+                # -------------------------
+                try:
+                    submit_btn = driver.find_element(By.CSS_SELECTOR, "input[type='submit']")
+                except NoSuchElementException:
+                    submit_btn = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
 
+                submit_btn.click()
+                time.sleep(8)
+
+                # -------------------------
+                # 게시글 URL 기록
+                # -------------------------
                 url = driver.current_url
                 total += 1
+
                 with open("realtime_links.txt", "a", encoding="utf-8") as f:
                     f.write(f"{total}. {datetime.now():%H:%M:%S} | {title} | {url}\n")
-                print(f"성공 {total}개: {url}")
+
+                print(f"성공 {total} → {url}")
 
             except Exception as e:
-                print(f"한 개 실패 → 다음으로: {e}")
-                time.sleep(10)
+                print("개별 작성 실패 → 다음 반복:", e)
+                time.sleep(5)
                 continue
 
     except Exception as e:
-        print(f"사이트 전체 실패: {e}")
+        print("사이트 전체 실패:", e)
+
     finally:
         driver.quit()
 
-print(f"\n완료! 총 {total}개 게시물 작성 성공")
+print(f"\n=== 완료: 총 {total}개 작성 성공 ===")
