@@ -1,19 +1,12 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+# bot2.py – Playwright 버전 (카페24 완벽 통과)
+from playwright.sync_api import sync_playwright
 import time, random
 from datetime import datetime
 
-options = Options()
-options.add_argument("--headless")
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
-
+# 파일 초기화
 open("realtime_links.txt", "w", encoding="utf-8").close()
 
+# sites.txt 로드
 sites = []
 with open("sites.txt", "r", encoding="utf-8") as f:
     for line in f:
@@ -22,6 +15,7 @@ with open("sites.txt", "r", encoding="utf-8") as f:
             p = line.split("|")
             sites.append({"write_url": p[0], "id": p[1], "pw": p[2], "login": p[3]})
 
+# 키워드 로드
 keywords = {"a": [], "b": [], "c": []}
 with open("keywords.txt", "r", encoding="utf-8") as f:
     for line in f:
@@ -33,69 +27,66 @@ content = open("contents.txt", "r", encoding="utf-8").read().strip()
 
 total = 0
 
-for site in sites:
-    driver = webdriver.Chrome(options=options)
-    wait = WebDriverWait(driver, 30)
-    
-    try:
-        # 로그인 (JS 강제 클릭)
-        driver.get(site["login"])
-        time.sleep(10)
-        driver.find_element(By.NAME, "member_id").send_keys(site["id"])
-        driver.find_element(By.NAME, "member_passwd").send_keys(site["pw"])
-        driver.execute_script("document.querySelector('a.btnSubmit').click();")
-        time.sleep(20)
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    context = browser.new_context(
+        viewport={"width": 1920, "height": 1080},
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    )
+    page = context.new_page()
 
-        for _ in range(100):
-            try:
-                driver.get(site["write_url"])
-                time.sleep(10)
+    for site in sites:
+        try:
+            # 로그인
+            page.goto(site["login"])
+            page.wait_for_load_state("networkidle")
+            page.fill("input[name='member_id']", site["id"])
+            page.fill("input[name='member_passwd']", site["pw"])
+            page.click("a.btnSubmit")
+            page.wait_for_load_state("networkidle")
 
-                # 무조건 alert 잡아서 취소 (이게 핵심!)
-                for _ in range(10):
-                    try:
-                        alert = WebDriverWait(driver, 3).until(EC.alert_is_present())
-                        alert.dismiss()
-                        print("작성중이던 글 alert → 취소 클릭")
-                        time.sleep(2)
-                        break
-                    except TimeoutException:
-                        time.sleep(1)
-                        continue
-
-                # 제목
-                title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
-                subject = wait.until(EC.element_to_be_clickable((By.NAME, "subject")))
-                driver.execute_script("arguments[0].scrollIntoView(true);", subject)
-                subject.send_keys(title)
-
-                # 내용
+            for _ in range(100):
                 try:
-                    iframe = driver.find_element(By.TAG_NAME("iframe"))
-                    driver.switch_to.frame(iframe)
-                    driver.find_element(By.TAG_NAME, "body").clear()
-                    driver.find_element(By.TAG_NAME, "body").send_keys(content)
-                    driver.switch_to.default_content()
-                except:
-                    driver.find_element(By.NAME, "content").clear()
-                    driver.find_element(By.NAME, "content").send_keys(content)
+                    page.goto(site["write_url"])
+                    page.wait_for_load_state("networkidle")
 
-                # 등록 (JS 강제 클릭)
-                driver.execute_script("document.querySelector('input[type=\\\"submit\\\"], button, a').click();")
-                time.sleep(15)
+                    # alert 있으면 취소
+                    try:
+                        page.on("dialog", lambda dialog: dialog.dismiss())
+                        page.wait_for_timeout(3000)
+                    except:
+                        pass
 
-                url = driver.current_url
-                total += 1
-                with open("realtime_links.txt", "a", encoding="utf-8") as f:
-                    f.write(f"{total}. {datetime.now():%H:%M:%S} | {title} | {url}\n")
-                print(f"성공 {total}개 → {url}")
+                    # 제목
+                    title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
+                    page.fill("input[name='subject']", title)
 
-            except Exception as e:
-                print(f"한 개 실패 → 다음으로: {e}")
-                time.sleep(8)
-                continue
+                    # 내용 (iframe 처리)
+                    try:
+                        page.frame_locator("iframe").locator("body").fill(content)
+                    except:
+                        page.fill("textarea[name='content']", content)
 
-    finally:
-        driver.quit()
+                    # 등록 클릭
+                    page.click("input[type='submit'], button:has-text('등록'), a:has-text('등록')")
+                    page.wait_for_load_state("networkidle")
+
+                    url = page.url
+                    total += 1
+                    with open("realtime_links.txt", "a", encoding="utf-8") as f:
+                        f.write(f"{total}. {datetime.now():%H:%M:%S} | {title} | {url}\n")
+                    print(f"성공 {total}개 → {url}")
+
+                    time.sleep(8)
+
+                except Exception as e:
+                    print(f"한 개 실패 → 다음: {e}")
+                    time.sleep(5)
+                    continue
+
+        except Exception as e:
+            print(f"사이트 실패: {e}")
+
+    browser.close()
 
 print(f"\n완료! 총 {total}개 게시물 작성 성공")
