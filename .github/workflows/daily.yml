@@ -1,24 +1,31 @@
-# daily.yml 전체 교체 (이거만 복사해서 덮어써)
 name: Daily Post + Real-time Links
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 0 * * *'  # 매일 한국 시간 오전 9시
   workflow_dispatch:
+
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-python@v4
-        with: { python-version: '3.12' }
-      - run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
-      - run: pip install selenium
-      - run: python bot2.py   # 여기만 bot2.py로 바꿈
-      - name: Commit links
+        with:
+          python-version: '3.12'
+          
+      - name: Install Chrome + Selenium
         run: |
-          git config user.email "action@github.com"
-          git config user.name "GitHub Action"
-          git add realtime_links.txt
-          git commit -m "Update links" || echo "No changes"
-          git pull --rebase origin main
-          git push origin main --force
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          pip install selenium
+          
+      - name: Run Bot
+        run: python bot2.py
+        
+      - name: Upload Links to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: realtime_links.txt
+          tag_name: latest
+          name: "실시간 링크"
