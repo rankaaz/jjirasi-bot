@@ -15,7 +15,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Chrome + ChromeDriver 자동 설치
       - uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: stable
@@ -26,14 +25,16 @@ jobs:
       - name: Run Bot
         run: python bot2.py
 
-      # 날짜 태그 생성 및 push
+      # 날짜 태그 생성 및 push (outputs에 태그명 저장)
       - name: Create and push tag
+        id: create_tag
         run: |
+          TAG="daily-$(date +'%Y%m%d')"
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          TAG="daily-$(date +'%Y%m%d')"
           git tag $TAG || echo "Tag $TAG already exists"
           git push origin $TAG || echo "Tag $TAG already pushed"
+          echo "::set-output name=tag::$TAG"
 
       # Release에 realtime_links.txt 업로드
       - name: Upload Links
@@ -41,5 +42,5 @@ jobs:
         with:
           allowUpdates: true
           artifacts: realtime_links.txt
-          tag: ${{ steps.create_tag.outputs.tag || 'daily-$(date +'%Y%m%d')' }}
+          tag: ${{ steps.create_tag.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
