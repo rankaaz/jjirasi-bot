@@ -3,10 +3,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time, random
+import time
+import random
 from datetime import datetime
+import traceback  # 에러 자세히 보기용
 
-# 봇 탐지 완전 우회 + 최고 안정성
+# 봇 탐지 완전 우회 (2025년 최신)
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
@@ -53,46 +55,64 @@ for site in sites:
         driver.get(site["login"])
         time.sleep(8)
 
-        # 로그인 (hongsthetic과 reanswer 둘 다 대응)
+        # 로그인 (두 사이트 모두 대응)
         try:
             driver.find_element(By.NAME, "member_id").send_keys(site["id"])
             driver.find_element(By.NAME, "member_passwd").send_keys(site["pw"])
         except:
-            driver.find_element(By.NAME, "user_id").send_keys(site["id"])
-            driver.find_element(By.NAME, "user_pw").send_keys(site["pw"])
+            try:
+                driver.find_element(By.NAME, "user_id").send_keys(site["id"])
+                driver.find_element(By.NAME, "user_pw").send_keys(site["pw"])
+            except:
+                print("로그인 필드 못 찾음 – 직접 확인 필요")
         
         driver.find_element(By.CSS_SELECTOR, "button[type='submit'], input[type='submit'], a.btnSubmit").click()
         time.sleep(10)
 
+        # 로그인 성공 확인
+        if "login" in driver.current_url.lower():
+            print("로그인 실패!")
+            continue
+
+        print("로그인 성공!")
+
         # 100개 포스팅
         for i in range(100):
-            driver.get(site["url"])
-            time.sleep(6)
-            
-            driver.find_element(By.LINK_TEXT, "글쓰기").click()
-            time.sleep(6)
+            try:
+                driver.get(site["url"])
+                time.sleep(6)
+                
+                driver.find_element(By.LINK_TEXT, "글쓰기").click()
+                time.sleep(6)
 
-            a = random.choice(keywords["a"])
-            b = random.choice(keywords["b"])
-            c = random.choice(keywords["c"])
-            title = f"{a} {b} {c}"
+                a = random.choice(keywords["a"])
+                b = random.choice(keywords["b"])
+                c = random.choice(keywords["c"])
+                title = f"{a} {b} {c}"
 
-            driver.find_element(By.NAME, "subject").send_keys(title)
-            driver.find_element(By.NAME, "content").send_keys(content)
+                driver.find_element(By.NAME, "subject").send_keys(title)
+                driver.find_element(By.NAME, "content").send_keys(content)
 
-            driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']").click()
-            time.sleep(12)
+                driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']").click()
+                time.sleep(12)
 
-            url = driver.current_url
-            total += 1
-            
-            with open("realtime_links.txt", "a", encoding="utf-8") as f:
-                f.write(f"{total}. {datetime.now().strftime('%H:%M:%S')} | {title} | {url}\n")
-            
-            print(f"성공 {total}개: {title} → {url}")
+                url = driver.current_url
+                total += 1
+                
+                with open("realtime_links.txt", "a", encoding="utf-8") as f:
+                    f.write(f"{total}. {datetime.now().strftime('%H:%M:%S')} | {title} | {url}\n")
+                
+                print(f"성공 {total}개: {title} → {url}")
+
+            except Exception as e:
+                print(f"포스팅 실패 (시도 {i+1}): {e}")
+                print(traceback.format_exc())
+                time.sleep(10)
+                continue
 
     except Exception as e:
-        print(f"에러 발생: {e}")
+        print(f"사이트 전체 실패: {e}")
+        print(traceback.format_exc())
     finally:
         driver.quit()
 
