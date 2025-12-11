@@ -46,7 +46,7 @@ total = 0
 
 for site in sites:
     driver = webdriver.Chrome(options=options)
-    wait = WebDriverWait(driver, 20
+    wait = WebDriverWait(driver, 20)
     
     try:
         # 1. 로그인 (두 사이트 모두 member_id / member_passwd)
