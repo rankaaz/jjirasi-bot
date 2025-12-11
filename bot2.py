@@ -83,7 +83,15 @@ for site in sites:
                 driver.switch_to.window(driver.window_handles[-1])
                 driver.get(site["url"])
                 time.sleep(8)
-
+            try:
+                    WebDriverWait(driver, 5).until(EC.alert_is_present())
+                    alert = driver.switch_to.alert
+                    print("alert 발견 → '아니오' 클릭")
+                    alert.dismiss()
+                    time.sleep(3)
+                except TimeoutException:
+                    print("alert 없음 → 바로 진행")
+                    pass
                 # 글쓰기 클릭
                 driver.find_element(By.LINK_TEXT, "글쓰기").click()
                 time.sleep(10)
