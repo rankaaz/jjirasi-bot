@@ -31,42 +31,47 @@ with open("keywords.txt", "r", encoding="utf-8") as f:
 
 content = open("contents.txt", "r", encoding="utf-8").read().strip()
 
-total = 0
+total =  = 0
 
 for site in sites:
     driver = webdriver.Chrome(options=options)
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 30)
     
     try:
         # 로그인
         driver.get(site["login"])
-        time.sleep(8)
-        driver.find_element(By.NAME, "member_id").send_keys(site["id"])
-        driver.find_element(By.NAME, "member_passwd").send_keys(site["pw"])
-        driver.find_element(By.CSS_SELECTOR, "button, input[type='submit'], a.btnSubmit").click()
-        time.sleep(12)
+        time.sleep(10)
 
+        # 아이디/비번 입력
+        wait.until(EC.presence_of_element_located((By.NAME, "member_id"))).send_keys(site["id"])
+        driver.find_element(By.NAME, "member_passwd").send_keys(site["pw"])
+
+        # 로그인 버튼 (a.btnSubmit 대기 후 클릭)
+        login_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.btnSubmit")))
+        login_btn.click()
+        time.sleep(15)
+
+        # 100개 반복
         for _ in range(100):
             try:
                 driver.get(site["write_url"])
-                time.sleep(8)
+                time.sleep(10)
 
                 # alert 있으면 취소
                 try:
-                    wait.until(EC.alert_is_present())
+                    wait.until(EC.alert_is_present(), timeout=5)
                     driver.switch_to.alert.dismiss()
-                    print("alert → 취소 클릭")
                     time.sleep(3)
                 except:
                     pass
 
-                # 제목 입력 (이 부분이 핵심!)
+                # 제목
                 title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
-                subject = driver.find_element(By.NAME, "subject")
+                subject = wait.until(EC.element_to_be_clickable((By.NAME, "subject")))
                 driver.execute_script("arguments[0].scrollIntoView(true);", subject)
                 subject.send_keys(title)
 
-                # 내용 입력
+                # 내용
                 try:
                     iframe = driver.find_element(By.TAG_NAME, "iframe")
                     driver.switch_to.frame(iframe)
@@ -77,8 +82,9 @@ for site in sites:
                     driver.find_element(By.NAME, "content").clear()
                     driver.find_element(By.NAME, "content").send_keys(content)
 
-                # 등록 버튼 (모든 경우 대응)
-                driver.find_element(By.XPATH, "//input[@type='submit'] | //button[contains(text(),'등록')] | //a[contains(text(),'등록')]").click()
+                # 등록 버튼 (a 태그 포함)
+                submit = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit'] | //button | //a[contains(text(),'등록')]")))
+                driver.execute_script("arguments[0].click();", submit)  # JS 클릭으로 확실히
                 time.sleep(15)
 
                 url = driver.current_url
@@ -88,11 +94,11 @@ for site in sites:
                 print(f"성공 {total}개 → {url}")
 
             except Exception as e:
-                print(f"한 개 실패 → 다음으로: {e}")
+                print(f"실패 → 다음: {e}")
                 time.sleep(8)
                 continue
 
     finally:
         driver.quit()
 
-print(f"\n완료! 총 {total}개 성공")
+print(f"완료! 총 {total}개 성공")
