@@ -1,4 +1,4 @@
-name: Daily Post - 100% 작동 보장
+name: Daily Post - 진짜 마지막
 on:
   schedule:
     - cron: '0 0 * * *'
@@ -10,35 +10,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.12'
           
-      # 이 3줄이 핵심! Chrome 버전 정확히 맞춤
+      # Chrome 설치 (버전 안 지정하고 최신으로!)
       - name: Install Chrome
         run: |
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
-          sudo apt-get install -y google-chrome-stable=142.0.7444.175-1
-      
+          sudo apt-get install -y google-chrome-stable
+          
+      # ChromeDriver 자동 설치 (최신 Chrome 버전에 맞춤)
       - name: Install ChromeDriver
         run: |
-          CHROME_VERSION="142.0.7444.175"
-          wget -O /tmp/chromedriver.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/linux64/chromedriver-linux64.zip
-          unzip /tmp/chromedriver.zip -d /tmp/
-          sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
-          sudo chmod +x /usr/local/bin/chromedriver
+          sudo apt-get install -y chromium-chromedriver
+          sudo ln -s /usr/lib/chromium-browser/chromedriver /usr/local/bin/chromedriver
+          
+      - run: pip install selenium
       
-      - name: Install Selenium
-        run: pip install selenium
+      - run: python bot2.py
       
-      - name: Run Bot
-        run: python bot2.py
-        
-      - name: Upload Links
-        uses: ncipollo/release-action@v1
+      - uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           artifacts: "realtime_links.txt"
