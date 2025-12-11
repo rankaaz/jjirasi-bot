@@ -14,7 +14,6 @@ options.add_argument("--disable-dev-shm-usage")
 
 open("realtime_links.txt", "w", encoding="utf-8").close()
 
-# 사이트 로드
 sites = []
 with open("sites.txt", "r", encoding="utf-8") as f:
     for line in f:
@@ -23,7 +22,6 @@ with open("sites.txt", "r", encoding="utf-8") as f:
             p = line.split("|")
             sites.append({"write_url": p[0], "id": p[1], "pw": p[2], "login": p[3]})
 
-# 키워드 로드
 keywords = {"a": [], "b": [], "c": []}
 with open("keywords.txt", "r", encoding="utf-8") as f:
     for line in f:
@@ -31,7 +29,6 @@ with open("keywords.txt", "r", encoding="utf-8") as f:
             k, v = line.strip().split("|", 1)
             keywords[k] = [w.strip() for w in v.split(",")]
 
-# 내용 로드
 content = open("contents.txt", "r", encoding="utf-8").read().strip()
 
 total = 0
@@ -49,19 +46,22 @@ for site in sites:
         driver.execute_script("document.querySelector('a.btnSubmit').click();")
         time.sleep(20)
 
-        # 100개 반복
         for _ in range(100):
             try:
                 driver.get(site["write_url"])
                 time.sleep(10)
 
-                # alert 있으면 취소
-                try:
-                    wait.until(EC.alert_is_present(), timeout=5)
-                    driver.switch_to.alert.dismiss()
-                    time.sleep(3)
-                except:
-                    pass
+                # 무조건 alert 잡아서 취소 (이게 핵심!)
+                for _ in range(10):
+                    try:
+                        alert = WebDriverWait(driver, 3).until(EC.alert_is_present())
+                        alert.dismiss()
+                        print("작성중이던 글 alert → 취소 클릭")
+                        time.sleep(2)
+                        break
+                    except TimeoutException:
+                        time.sleep(1)
+                        continue
 
                 # 제목
                 title = f"{random.choice(keywords['a'])} {random.choice(keywords['b'])} {random.choice(keywords['c'])}"
@@ -71,7 +71,7 @@ for site in sites:
 
                 # 내용
                 try:
-                    iframe = driver.find_element(By.TAG_NAME, "iframe")
+                    iframe = driver.find_element(By.TAG_NAME("iframe"))
                     driver.switch_to.frame(iframe)
                     driver.find_element(By.TAG_NAME, "body").clear()
                     driver.find_element(By.TAG_NAME, "body").send_keys(content)
@@ -91,11 +91,11 @@ for site in sites:
                 print(f"성공 {total}개 → {url}")
 
             except Exception as e:
-                print(f"실패 → 다음: {e}")
+                print(f"한 개 실패 → 다음으로: {e}")
                 time.sleep(8)
                 continue
 
     finally:
         driver.quit()
 
-print(f"\n완료! 총 {total}개 성공")
+print(f"\n완료! 총 {total}개 게시물 작성 성공")
