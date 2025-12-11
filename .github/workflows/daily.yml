@@ -1,4 +1,4 @@
-name: Daily Post - 진짜 마지막
+name: Daily Post - 진짜 작동
 on:
   schedule:
     - cron: '0 0 * * *'
@@ -14,27 +14,26 @@ jobs:
         with:
           python-version: '3.12'
           
-      # Chrome 설치 (버전 안 지정하고 최신으로!)
-      - name: Install Chrome
+      - name: Install Chrome + ChromeDriver (2025 최신 해결법)
         run: |
-          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-          
-      # ChromeDriver 자동 설치 (최신 Chrome 버전에 맞춤)
-      - name: Install ChromeDriver
-        run: |
+          sudo apt-get install -y wget unzip
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo apt install -y ./google-chrome-stable_current_amd64.deb
           sudo apt-get install -y chromium-chromedriver
-          sudo ln -s /usr/lib/chromium-browser/chromedriver /usr/local/bin/chromedriver
+          sudo cp /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+          sudo chmod +x /usr/bin/chromedriver
           
-      - run: pip install selenium
+      - name: Install Selenium
+        run: pip install selenium
       
-      - run: python bot2.py
-      
-      - uses: ncipollo/release-action@v1
+      - name: Run Bot
+        run: python bot2.py
+        
+      - name: Upload Links
+        uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          artifacts: "realtime_links.txt"
+          artifacts: realtime_links.txt
           tagName: latest
           token: ${{ secrets.GITHUB_TOKEN }}
