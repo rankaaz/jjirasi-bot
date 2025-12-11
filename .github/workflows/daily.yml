@@ -1,9 +1,9 @@
-name: Daily Post - 진짜 작동
+name: Daily Post - 진짜 완벽
 
 on:
   schedule:
-    - cron: '0 0 * * *'    # 매일 한국시간 오전 9시 (UTC 0시)
-  workflow_dispatch:       # 수동 실행 가능
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   run:
@@ -15,6 +15,7 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Chrome + ChromeDriver 자동 설치 (100% 성공)
       - uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: stable
@@ -25,22 +26,14 @@ jobs:
       - name: Run Bot
         run: python bot2.py
 
-      # 날짜 태그 생성 및 push (outputs에 태그명 저장)
-      - name: Create and push tag
-        id: create_tag
-        run: |
-          TAG="daily-$(date +'%Y%m%d')"
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag $TAG || echo "Tag $TAG already exists"
-          git push origin $TAG || echo "Tag $TAG already pushed"
-          echo "::set-output name=tag::$TAG"
-
-      # Release에 realtime_links.txt 업로드
-      - name: Upload Links
+      # 기존 latest 태그 강제 업데이트 (태그 충돌 완전 해결)
+      - name: Upload Links (latest 강제 업데이트)
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           artifacts: realtime_links.txt
-          tag: ${{ steps.create_tag.outputs.tag }}
+          tag: latest
+          name: 오늘 작성된 글 링크
+          body: 자동 생성된 링크 파일
           token: ${{ secrets.GITHUB_TOKEN }}
+          removeArtifacts: false
