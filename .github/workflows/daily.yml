@@ -1,36 +1,25 @@
-name: Daily Post + Save Links
+name: Daily Post
 on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
-
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-          
-      - name: Install Chrome + Selenium
-        run: |
+        with: { python-version: '3.12' }
+      - run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
           pip install selenium
-          
-      - name: Run Bot
-        run: python bot2.py
-        
-      # 빈 파일이어도 무조건 올리게 수정!
-      - name: Upload Links (even if empty)
-        uses: softprops/action-gh-release@v2
+      - run: python bot2.py
+      - name: Upload Links
+        uses: ncipollo/release-action@v1
         with:
-          files: realtime_links.txt
-          tag_name: latest
-          name: "실시간 링크"
-          body: "포스팅 결과 (빈 파일이어도 생성됨)"
-          draft: false
-          prerelease: false
-          fail_on_empty: false   # 이 줄이 핵심!
+          allowUpdates: true
+          artifactErrorsFailBuild: false
+          artifacts: "realtime_links.txt"
+          tag: latest
+          token: ${{ secrets.GITHUB_TOKEN }}
